@@ -1,0 +1,10 @@
+# Ignore all files in the hide_files directory
+/hide_files/
+
+# Ignore all pictures
+*.png
+*.jpg
+*.jpeg
+
+# Ignore files
+.DS_Store
