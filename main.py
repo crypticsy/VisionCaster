@@ -164,18 +164,18 @@ def display_message(text, sleep_time=0):
 
 
 def save_user_interaction(current_time, caption, filename):
-    with open(os.path.join(base_dir, "data", "data.json"), "r") as file:
+    with open(os.path.join(base_dir, "data", "history.json"), "r") as file:
         data = json.load(file)
     
     # Append the new data to the existing list
     data.append(dict(
-        createdAt = current_time.isoFormat(),
+        createdAt = current_time.isoformat(),
         caption = caption,
         filename = filename
     ))
     
     # Save the updated data to the file
-    json.dump(data, open(os.path.join(base_dir, "data", "data.json"), "w"))
+    json.dump(data, open(os.path.join(base_dir, "data", "history.json"), "w"))
 
 
 
@@ -200,9 +200,10 @@ def main():
             filename = os.path.join( "data", f"photo_{current_time.strftime('%Y%m%d_%H%M%S')}.png")
             
             display_message("Smile for the camera!")
-            convert_text_to_speech(None, "camera")
             capture_image(filename=filename)
+            convert_text_to_speech(None, "camera")
             
+            convert_text_to_speech("Processing image...")
             display_message("Processing image...")
             caption = analyse_image(filename=filename)
             save_user_interaction(current_time, caption, filename)
