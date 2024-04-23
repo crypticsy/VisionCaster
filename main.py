@@ -232,22 +232,22 @@ def main():
             # Capture an image using the constructed filename
             capture_image(filename=filename)
             # Simultaneously display a message on the LCD and play a sound
-            process_two_functions_with_threading(display_message, ("Smile for the camera!"), play_sound, ("camera"))
+            process_two_functions_with_threading(display_message, ("Smile for the camera!",), play_sound, ("camera",))
             
             # Display a processing message and convert the displayed text to speech concurrently
-            process_two_functions_with_threading(convert_text_to_speech, ("Processing image..."), display_message, ("Processing image..."))
+            process_two_functions_with_threading(convert_text_to_speech, ("Processing image...",), display_message, ("Processing image...",))
             # Analyze the captured image and retrieve a caption
             caption = analyse_image(filename=filename)
             # Log this interaction for future reference or analysis
             save_user_interaction(current_time, caption, filename)
             
             # Display the image caption and play a sound indicating the end of the process
-            process_two_functions_with_threading(display_message, (caption), play_sound, ("camera"))
+            process_two_functions_with_threading(convert_text_to_speech, (caption,), display_message, (caption,))
             
             # Clear any previous messages from the LCD
             lcd.clear()
             # Prepare the system for the next interaction by indicating readiness
-            process_two_functions_with_threading(display_message, ("Ready..."), play_sound, ("start"))
+            process_two_functions_with_threading(display_message, ("Ready...",), play_sound, ("start",))
     
     prev_button_state = button_state
 
@@ -256,7 +256,7 @@ def main():
 if __name__ == "__main__":
     try:
         lcd.clear()
-        process_two_functions_with_threading(display_message, ("Ready..."), play_sound, ("start"))
+        process_two_functions_with_threading(display_message, ("Ready...",), play_sound, ("start",))
         while True:
             main()
         
