@@ -3,6 +3,7 @@ import os
 import time
 import json
 from datetime import datetime
+from threading import Thread
 from subprocess import PIPE
 
 # External library imports for Raspberry Pi hardware control
@@ -124,38 +125,52 @@ def analyse_image(filename):
 
 
 
-def convert_text_to_speech(speech_text, musicName=None):
-    if musicName:
-        #  Play the audio file
-        pygame.mixer.init()
-        pygame.mixer.music.load(sounds.get(musicName))
-        pygame.mixer.music.play()
-        
-        while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10) # Wait for the audio to finish playing
-            
-    else:
-        """Converts text to speech and plays it back."""
-        tts = gTTS(text=speech_text, lang='en')
-        tts.save("speech.mp3")
-        
-        #  Play the audio file
-        pygame.mixer.init()
-        pygame.mixer.music.load("speech.mp3")
-        pygame.mixer.music.play()
-        
-        while pygame.mixer.music.get_busy():
-            pygame.time.Clock().tick(10) # Wait for the audio to finish playing
-        
-        # Delete the audio file
-        os.remove("speech.mp3")
+def play_sound(musicName):
+    """Plays a sound file from the sounds dictionary."""
+    #  Play the audio file
+    pygame.mixer.init()
+    pygame.mixer.music.load(sounds.get(musicName))
+    pygame.mixer.music.play()
+    
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)        # Wait for the audio to finish playing
 
 
 
-def display_message(text, sleep_time=0):
-    """Displays text on an LCD and clears it after a specified duration."""
+def convert_text_to_speech(speech_text):
+    """Converts text to speech and plays it back."""
+    tts = gTTS(text=speech_text, lang='en')
+    tts.save("speech.mp3")
+    
+    #  Play the audio file
+    pygame.mixer.init()
+    pygame.mixer.music.load("speech.mp3")
+    pygame.mixer.music.play()
+    
+    while pygame.mixer.music.get_busy():
+        pygame.time.Clock().tick(10)        # Wait for the audio to finish playing
+    
+    # Delete the audio file
+    os.remove("speech.mp3")
+
+
+
+def display_message(txt, sleep_time=0):
+    """Displays a message on the LCD with a left scrolling effect."""
     lcd.clear()
-    lcd.message = text
+    txt = txt.strip() + ' '                 # Ensure there's a space after the text
+    n = lcd_columns
+    
+    while True:
+        lcd.clear()                         # Clear the display to update the scrolling text
+        sleep(0.1)
+        lcd.message = txt[:lcd_columns]     # Show the first part of the text on the LCD
+        sleep(0.2)                          # Delay to control the speed of the scroll
+        txt = txt[1:] + txt[0]              # Rotate text to the left
+        
+        if n >= len(txt): 
+            break
+        n += 1
     
     if sleep_time > 0:
         sleep(sleep_time)
@@ -179,6 +194,18 @@ def save_user_interaction(current_time, caption, filename):
 
 
 
+def process_two_functions_with_threading(func1, args1, func2, args2):
+    """Process two functions concurrently."""
+    thread1 = Thread(target=func1, args=args1)
+    thread2 = Thread(target=func2, args=args2)
+    
+    thread1.start()
+    thread2.start()
+    
+    thread1.join()
+    thread2.join()
+
+
 
 def main():
     """Main function to handle button press logic and process image."""
@@ -194,24 +221,34 @@ def main():
     elif prev_button_state == GPIO.LOW and button_state == GPIO.HIGH:  # Button is released
         press_time_end = time.time()
         press_duration = press_time_end - press_time_start
-
+        
+        # Check if the duration of a button press is short
         if press_duration < SHORT_PRESS_TIME:
+            # Record the current time when the button press was registered
             current_time = datetime.now()
-            filename = os.path.join( "data", f"photo_{current_time.strftime('%Y%m%d_%H%M%S')}.png")
+            # Construct a filename for saving the photo with a timestamp
+            filename = os.path.join("data", f"photo_{current_time.strftime('%Y%m%d_%H%M%S')}.png")
             
-            display_message("Smile for the camera!")
+            # Capture an image using the constructed filename
             capture_image(filename=filename)
-            convert_text_to_speech(None, "camera")
+            # Simultaneously display a message on the LCD and play a sound
+            process_two_functions_with_threading(display_message, ("Smile for the camera!"), play_sound, ("camera"))
             
-            convert_text_to_speech("Processing image...")
-            display_message("Processing image...")
+            # Display a processing message and convert the displayed text to speech concurrently
+            process_two_functions_with_threading(convert_text_to_speech, ("Processing image..."), display_message, ("Processing image..."))
+            # Analyze the captured image and retrieve a caption
             caption = analyse_image(filename=filename)
+            # Log this interaction for future reference or analysis
             save_user_interaction(current_time, caption, filename)
             
-            display_message(caption)
-            convert_text_to_speech(caption)
+            # Display the image caption and play a sound indicating the end of the process
+            process_two_functions_with_threading(display_message, (caption), play_sound, ("camera"))
+            
+            # Clear any previous messages from the LCD
             lcd.clear()
-
+            # Prepare the system for the next interaction by indicating readiness
+            process_two_functions_with_threading(display_message, ("Ready..."), play_sound, ("start"))
+    
     prev_button_state = button_state
 
 
@@ -219,12 +256,10 @@ def main():
 if __name__ == "__main__":
     try:
         lcd.clear()
-        convert_text_to_speech(None, "start")
-        display_message("Ready...")
-        
+        process_two_functions_with_threading(display_message, ("Ready..."), play_sound, ("start"))
         while True:
             main()
-    
+        
     except KeyboardInterrupt:
         GPIO.cleanup()
         display_message("Exiting...", 5)
